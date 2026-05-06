@@ -21,6 +21,7 @@ bool eat_flag;
 bool game_flag;
 bool heal_flag;
 bool info_flag;
+bool NO_flag;
 
 int y;
 
@@ -176,9 +177,12 @@ static void draw_callback(Canvas* canvas, void* ctx) {
 
     canvas_draw_icon(canvas, 86, 2, &I_states);
 
-    canvas_draw_box(canvas, 95 + (30 - game_state.health), 3, game_state.health, 4);
-    canvas_draw_box(canvas, 95 + (30 - game_state.happiness), 10, game_state.happiness, 4);
-    canvas_draw_box(canvas, 95 + (30 - game_state.hunger), 17, game_state.hunger, 4);
+    if(game_state.health > 0)
+        canvas_draw_box(canvas, 95 + (30 - game_state.health), 3, game_state.health, 4);
+    if(game_state.happiness > 0)
+        canvas_draw_box(canvas, 95 + (30 - game_state.happiness), 10, game_state.happiness, 4);
+    if(game_state.hunger > 0)
+        canvas_draw_box(canvas, 95 + (30 - game_state.hunger), 17, game_state.hunger, 4);
 
     canvas_draw_icon(canvas, 8, 50, &I_eat);
     canvas_draw_icon(canvas, 28, 50, &I_pet);
@@ -224,8 +228,7 @@ static void draw_callback(Canvas* canvas, void* ctx) {
             elements_multiline_text_aligned(canvas, 48, 48, AlignLeft, AlignTop, "Icefish");
 
         elements_multiline_text_aligned(canvas, 44, y, AlignRight, AlignTop, ">");
-    }
-    if(heal_flag) {
+    } else if(heal_flag) {
         canvas_clear(canvas);
 
         elements_multiline_text_aligned(canvas, 48, 16, AlignLeft, AlignTop, "Vitamins");
@@ -245,8 +248,7 @@ static void draw_callback(Canvas* canvas, void* ctx) {
             elements_multiline_text_aligned(canvas, 48, 40, AlignLeft, AlignTop, "Injection");
 
         elements_multiline_text_aligned(canvas, 44, y, AlignRight, AlignTop, ">");
-    }
-    if(info_flag) {
+    } else if(info_flag) {
         canvas_clear(canvas);
 
         canvas_draw_icon(canvas, 90, 2, &I_trarops);
@@ -283,8 +285,7 @@ static void draw_callback(Canvas* canvas, void* ctx) {
         // canvas_draw_str(canvas, 8, 32, "sec:");
         // snprintf(str, sizeof(str), "%ld", seconds_passed_here);
         // canvas_draw_str(canvas, 26, 32, str);
-    }
-    if(game_flag) {
+    } else if(game_flag) {
         canvas_clear(canvas);
 
         canvas_draw_icon(canvas, 0, 0, &I_frame);
@@ -320,6 +321,11 @@ static void draw_callback(Canvas* canvas, void* ctx) {
             canvas_set_font(canvas, FontPrimary);
             canvas_draw_str(canvas, 42, 36, "THE END");
         }
+    } else if(NO_flag) {
+        canvas_clear(canvas);
+
+        canvas_set_font(canvas, FontPrimary);
+        canvas_draw_str(canvas, 52, 36, "NO!");
     }
 }
 // }
@@ -476,6 +482,8 @@ int32_t tamagochi_app(void* p) {
                     heal_flag = false;
                 else if(info_flag)
                     info_flag = false;
+                else if(NO_flag)
+                    NO_flag = false;
                 else {
                     game_state.last_save_time = furi_hal_rtc_get_timestamp();
                     save_game();
@@ -528,6 +536,9 @@ int32_t tamagochi_app(void* p) {
                     select--;
                 }
             } else if(event.input.key == InputKeyOk && event.input.type == InputTypePress) {
+                // if(NO_flag) {
+                //     NO_flag = false; //??????????????????????
+                // }
                 if(eat_flag) { //EAT
                     game_state.exp += 2;
 
@@ -576,9 +587,11 @@ int32_t tamagochi_app(void* p) {
                         else
                             game_state.hunger = 30;
                     }
-                } else if(select == 1) {
+                } else if(select == 1 && game_state.hunger < 30) {
                     eat_flag = true;
                     y = 8;
+                } else if(select == 1 && game_state.hunger == 30) {
+                    NO_flag = true;
                 }
 
                 else if(select == 2) { //PET
@@ -749,12 +762,14 @@ int32_t tamagochi_app(void* p) {
                         else
                             game_state.health = 30;
                     }
-                } else if(select == 5) {
+                } else if(select == 5 && game_state.health < 30) {
                     heal_flag = true;
                     y = 16;
+                } else if(select == 5 && game_state.health == 30) {
+                    NO_flag = true;
                 }
 
-                else if(select == 6) {
+                else if(select == 6) { //INFO
                     info_flag = true;
                 }
             }
