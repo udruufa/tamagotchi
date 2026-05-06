@@ -18,10 +18,14 @@ int dolphin = 0;
 int select = 1;
 
 bool eat_flag;
+bool game_flag;
 bool heal_flag;
 bool info_flag;
 
 int y;
+
+int lvl_mid = 5;
+int lvl_sen = 9;
 
 uint32_t start;
 int32_t seconds_passed_here;
@@ -32,6 +36,9 @@ typedef struct {
     int32_t hunger;
     int32_t exp;
     int32_t lvl;
+    int32_t happiness_time;
+    int32_t hunger_time;
+    int32_t exp_time;
     uint32_t last_save_time;
 } TamagochiState;
 
@@ -46,6 +53,41 @@ typedef struct {
     EventType type;
     InputEvent input;
 } TamagochiEvent;
+
+// GAME
+
+bool game = true;
+bool win = false;
+
+int32_t section_x = 40;
+int32_t section_y = 8;
+
+int count = 0;
+
+int count_40 = 0;
+int count_57 = 0;
+int count_74 = 0;
+int count_8 = 0;
+int count_25 = 0;
+int count_42 = 0;
+int count_left = 0;
+int count_right = 0;
+
+int count_40_rand = 0;
+int count_57_rand = 0;
+int count_74_rand = 0;
+int count_8_rand = 0;
+int count_25_rand = 0;
+int count_42_rand = 0;
+int count_left_rand = 0;
+int count_right_rand = 0;
+
+int rand_rows = 9;
+int32_t arr_rand[9][2] =
+    {{40, 8}, {57, 8}, {74, 8}, {40, 25}, {57, 25}, {74, 25}, {40, 42}, {57, 42}, {74, 42}};
+
+int32_t arr_done[5][2];
+int32_t arr_rand_done[4][2];
 
 static void draw_callback(Canvas* canvas, void* ctx) {
     UNUSED(ctx);
@@ -97,28 +139,28 @@ static void draw_callback(Canvas* canvas, void* ctx) {
     seconds_passed_here = now - start;
 
     if(sec % 4 == 0 || sec == 0) {
-        if(dolphin == 0) {
-            canvas_draw_icon(canvas, 50, 20, &I_dolph_s_2);
-        } else if(dolphin == 1) {
-            canvas_draw_icon(canvas, 50, 14, &I_dolph_m_2);
-        } else if(dolphin == 2) {
+        if(game_state.lvl >= lvl_sen) {
             canvas_draw_icon(canvas, 38, 6, &I_dolph_l_2);
+        } else if(game_state.lvl >= lvl_mid) {
+            canvas_draw_icon(canvas, 50, 14, &I_dolph_m_2);
+        } else {
+            canvas_draw_icon(canvas, 50, 20, &I_dolph_s_2);
         }
     } else if(sec % 2 == 0) {
-        if(dolphin == 0) {
-            canvas_draw_icon(canvas, 51, 20, &I_dolph_s_0);
-        } else if(dolphin == 1) {
-            canvas_draw_icon(canvas, 50, 14, &I_dolph_m_0);
-        } else if(dolphin == 2) {
+        if(game_state.lvl >= lvl_sen) {
             canvas_draw_icon(canvas, 42, 6, &I_dolph_l_0);
+        } else if(game_state.lvl >= lvl_mid) {
+            canvas_draw_icon(canvas, 50, 14, &I_dolph_m_0);
+        } else {
+            canvas_draw_icon(canvas, 51, 20, &I_dolph_s_0);
         }
     } else {
-        if(dolphin == 0) {
-            canvas_draw_icon(canvas, 50, 20, &I_dolph_s_1);
-        } else if(dolphin == 1) {
-            canvas_draw_icon(canvas, 50, 14, &I_dolph_m_1);
-        } else if(dolphin == 2) {
+        if(game_state.lvl >= lvl_sen) {
             canvas_draw_icon(canvas, 42, 6, &I_dolph_l_1);
+        } else if(game_state.lvl >= lvl_mid) {
+            canvas_draw_icon(canvas, 50, 14, &I_dolph_m_1);
+        } else {
+            canvas_draw_icon(canvas, 50, 20, &I_dolph_s_1);
         }
     }
 
@@ -129,7 +171,7 @@ static void draw_callback(Canvas* canvas, void* ctx) {
     game_state.lvl = floor(sqrt(game_state.exp / 10));
     canvas_draw_str(canvas, 4, 18, "lvl");
     snprintf(str3, sizeof(str3), "%ld", game_state.lvl);
-    canvas_draw_str(canvas, 16, 18, str3);
+    canvas_draw_str(canvas, 14, 18, str3);
 
     canvas_draw_icon(canvas, 86, 2, &I_states);
 
@@ -211,7 +253,7 @@ static void draw_callback(Canvas* canvas, void* ctx) {
         canvas_set_font(canvas, FontPrimary);
         canvas_draw_str(canvas, 6, 14, name);
         canvas_draw_str(canvas, 46, 14, "| lvl");
-        canvas_draw_str(canvas, 64, 14, str3);
+        canvas_draw_str(canvas, 66, 14, str3);
 
         canvas_set_font(canvas, FontSecondary);
 
@@ -234,12 +276,49 @@ static void draw_callback(Canvas* canvas, void* ctx) {
 
         canvas_draw_str(canvas, 8, 58, "hunger:");
         snprintf(str2, sizeof(str2), "%ld", game_state.hunger);
-        canvas_draw_str(canvas, 42, 58, str2);
-        canvas_draw_str(canvas, 50, 58, "/30");
+        canvas_draw_str(canvas, 40, 58, str2);
+        canvas_draw_str(canvas, 48, 58, "/30");
 
         // canvas_draw_str(canvas, 8, 32, "sec:");
         // snprintf(str, sizeof(str), "%ld", seconds_passed_here);
         // canvas_draw_str(canvas, 26, 32, str);
+    }
+    if(game_flag) {
+        canvas_clear(canvas);
+
+        canvas_draw_icon(canvas, 0, 0, &I_frame);
+
+        canvas_draw_icon(canvas, section_x, section_y, &I_section);
+
+        for(int i = 0; i < count; i++) {
+            canvas_draw_icon(canvas, arr_done[i][0], arr_done[i][1], &I_x);
+            canvas_draw_icon(canvas, arr_rand_done[i][0], arr_rand_done[i][1], &I_o);
+        }
+
+        if(count == 5 || count_40 == 3 || count_57 == 3 || count_74 == 3 || count_8 == 3 ||
+           count_25 == 3 || count_42 == 3 || count_left == 3 || count_right == 3 ||
+           count_40_rand == 3 || count_57_rand == 3 || count_74_rand == 3 || count_8_rand == 3 ||
+           count_25_rand == 3 || count_42_rand == 3 || count_left_rand == 3 ||
+           count_right_rand == 3) {
+            canvas_draw_icon(canvas, 0, 0, &I_frame_end);
+            game = false;
+        }
+
+        if(count_40 == 3 || count_57 == 3 || count_74 == 3 || count_8 == 3 || count_25 == 3 ||
+           count_42 == 3 || count_left == 3 || count_right == 3) {
+            canvas_set_font(canvas, FontPrimary);
+            canvas_draw_str(canvas, 42, 36, "YOU WIN");
+            win = true;
+        } else if(
+            count_40_rand == 3 || count_57_rand == 3 || count_74_rand == 3 || count_8_rand == 3 ||
+            count_25_rand == 3 || count_42_rand == 3 || count_left_rand == 3 ||
+            count_right_rand == 3) {
+            canvas_set_font(canvas, FontPrimary);
+            canvas_draw_str(canvas, 38, 36, "YOU LOSE");
+        } else if(count == 5) {
+            canvas_set_font(canvas, FontPrimary);
+            canvas_draw_str(canvas, 42, 36, "THE END");
+        }
     }
 }
 // }
@@ -313,6 +392,9 @@ void init_new_game() {
     game_state.hunger = 30;
     game_state.exp = 0;
     game_state.lvl = 1;
+    game_state.happiness_time = 60;
+    game_state.hunger_time = 30;
+    game_state.exp_time = 30;
     game_state.last_save_time = furi_hal_rtc_get_timestamp();
 }
 
@@ -322,6 +404,7 @@ int32_t tamagochi_app(void* p) {
     // bool health_plus = false;
     bool happiness_plus = false;
     bool hunger_plus = false;
+    bool exp_plus = false;
 
     TamagochiEvent event;
     FuriMessageQueue* event_queue = furi_message_queue_alloc(8, sizeof(TamagochiEvent));
@@ -341,25 +424,31 @@ int32_t tamagochi_app(void* p) {
 
     uint32_t now = furi_hal_rtc_get_timestamp();
     int32_t seconds_passed = now - game_state.last_save_time;
-    if(game_state.happiness > 0) game_state.happiness -= seconds_passed / 60;
-    if(game_state.hunger > 0) game_state.hunger -= seconds_passed / 30;
+    if(game_state.happiness > 0)
+        game_state.happiness -= seconds_passed / game_state.happiness_time;
+    if(game_state.hunger > 0) game_state.hunger -= seconds_passed / game_state.hunger_time;
 
     while(1) {
         furi_check(furi_message_queue_get(event_queue, &event, FuriWaitForever) == FuriStatusOk);
 
-        if(game_state.happiness > 0 && seconds_passed_here % 60 == 0 &&
-           seconds_passed_here >= 60 && happiness_plus == false) {
+        if(game_state.happiness > 0 && seconds_passed_here % game_state.happiness_time == 0 &&
+           seconds_passed_here >= game_state.happiness_time && happiness_plus == false) {
             game_state.happiness--;
             happiness_plus = true;
         }
-        if(game_state.hunger > 0 && seconds_passed_here % 30 == 0 && seconds_passed_here >= 30 &&
-           hunger_plus == false) {
+        if(game_state.hunger > 0 && seconds_passed_here % game_state.hunger_time == 0 &&
+           seconds_passed_here >= game_state.hunger_time && hunger_plus == false) {
             game_state.hunger--;
             hunger_plus = true;
         }
-        if(seconds_passed_here % 30 != 0) {
+        if(seconds_passed_here % game_state.hunger_time != 0) {
             happiness_plus = false;
             hunger_plus = false;
+            exp_plus = false;
+        }
+        if(seconds_passed_here % game_state.exp_time == 0 && exp_plus == false) {
+            game_state.exp++;
+            exp_plus = true;
         }
 
         if(event.type == EventTypeInput) {
@@ -376,7 +465,6 @@ int32_t tamagochi_app(void* p) {
                     break;
                 }
             } else if(event.input.key == InputKeyUp && event.input.type == InputTypePress) {
-                if(dolphin < 2) dolphin++;
                 if(eat_flag) {
                     if(y == 48)
                         y -= 16;
@@ -389,9 +477,10 @@ int32_t tamagochi_app(void* p) {
                         y -= 12;
                     else
                         y = 40;
+                } else if(game_flag) {
+                    section_y -= 17;
                 }
             } else if(event.input.key == InputKeyDown && event.input.type == InputTypePress) {
-                if(dolphin > 0) dolphin--;
                 if(eat_flag) {
                     if(y == 32)
                         y += 16;
@@ -404,13 +493,23 @@ int32_t tamagochi_app(void* p) {
                         y += 12;
                     else
                         y = 16;
+                } else if(game_flag) {
+                    section_y += 17;
                 }
             } else if(event.input.key == InputKeyRight && event.input.type == InputTypePress) {
-                if(select == 6) select = 0;
-                select++;
+                if(game_flag)
+                    section_x += 17;
+                else {
+                    if(select == 6) select = 0;
+                    select++;
+                }
             } else if(event.input.key == InputKeyLeft && event.input.type == InputTypePress) {
-                if(select == 1) select = 7;
-                select--;
+                if(game_flag)
+                    section_x -= 17;
+                else {
+                    if(select == 1) select = 7;
+                    select--;
+                }
             } else if(event.input.key == InputKeyOk && event.input.type == InputTypePress) {
                 if(eat_flag) { //EAT
                     game_state.exp += 2;
@@ -474,7 +573,118 @@ int32_t tamagochi_app(void* p) {
                         game_state.happiness = 30;
                 }
 
-                else if(select == 3) { //PLAY
+                if(game_flag) { //PLAY
+                    if(game) {
+                        arr_done[count][0] = section_x;
+                        arr_done[count][1] = section_y;
+
+                        if(arr_done[count][0] == 40) count_40++;
+                        if(arr_done[count][0] == 57) count_57++;
+                        if(arr_done[count][0] == 74) count_74++;
+                        if(arr_done[count][1] == 8) count_8++;
+                        if(arr_done[count][1] == 25) count_25++;
+                        if(arr_done[count][1] == 42) count_42++;
+                        if(arr_done[count][0] == 40 && arr_done[count][1] == 8) count_left++;
+                        if(arr_done[count][0] == 74 && arr_done[count][1] == 42) count_left++;
+                        if(arr_done[count][0] == 74 && arr_done[count][1] == 8) count_right++;
+                        if(arr_done[count][0] == 40 && arr_done[count][1] == 42) count_right++;
+                        if(arr_done[count][0] == 57 && arr_done[count][1] == 25) {
+                            count_left++;
+                            count_right++;
+                        }
+
+                        if(count < 4) {
+                            for(int i = 0; i < rand_rows; i++) {
+                                if(arr_rand[i][0] == arr_done[count][0] &&
+                                   arr_rand[i][1] == arr_done[count][1]) {
+                                    for(int j = i; j < rand_rows - 1; j++) {
+                                        arr_rand[j][0] = arr_rand[j + 1][0];
+                                        arr_rand[j][1] = arr_rand[j + 1][1];
+                                    }
+                                    rand_rows--;
+                                    break;
+                                }
+                            }
+
+                            int row = rand() % rand_rows;
+                            arr_rand_done[count][0] = arr_rand[row][0];
+                            arr_rand_done[count][1] = arr_rand[row][1];
+
+                            if(arr_rand_done[count][0] == 40) count_40_rand++;
+                            if(arr_rand_done[count][0] == 57) count_57_rand++;
+                            if(arr_rand_done[count][0] == 74) count_74_rand++;
+                            if(arr_rand_done[count][1] == 8) count_8_rand++;
+                            if(arr_rand_done[count][1] == 25) count_25_rand++;
+                            if(arr_rand_done[count][1] == 42) count_42_rand++;
+                            if(arr_rand_done[count][0] == 40 && arr_rand_done[count][1] == 8)
+                                count_left_rand++;
+                            if(arr_rand_done[count][0] == 74 && arr_rand_done[count][1] == 42)
+                                count_left_rand++;
+                            if(arr_rand_done[count][0] == 74 && arr_rand_done[count][1] == 8)
+                                count_right_rand++;
+                            if(arr_rand_done[count][0] == 40 && arr_rand_done[count][1] == 42)
+                                count_right_rand++;
+                            if(arr_rand_done[count][0] == 57 && arr_rand_done[count][1] == 25) {
+                                count_left_rand++;
+                                count_right_rand++;
+                            }
+
+                            for(int i = 0; i < rand_rows; i++) {
+                                if(arr_rand[i][0] == arr_rand_done[count][0] &&
+                                   arr_rand[i][1] == arr_rand_done[count][1]) {
+                                    for(int j = i; j < rand_rows - 1; j++) {
+                                        arr_rand[j][0] = arr_rand[j + 1][0];
+                                        arr_rand[j][1] = arr_rand[j + 1][1];
+                                    }
+                                    rand_rows--;
+                                    break;
+                                }
+                            }
+                        }
+                        count++;
+                    } else if(!(game)) {
+                        section_x = 40;
+                        section_y = 8;
+
+                        count = 0;
+
+                        count_40 = 0;
+                        count_57 = 0;
+                        count_74 = 0;
+                        count_8 = 0;
+                        count_25 = 0;
+                        count_42 = 0;
+                        count_left = 0;
+                        count_right = 0;
+
+                        count_40_rand = 0;
+                        count_57_rand = 0;
+                        count_74_rand = 0;
+                        count_8_rand = 0;
+                        count_25_rand = 0;
+                        count_42_rand = 0;
+                        count_left_rand = 0;
+                        count_right_rand = 0;
+
+                        rand_rows = 9;
+                        memcpy(
+                            arr_rand,
+                            (int32_t[9][2]){
+                                {40, 8},
+                                {57, 8},
+                                {74, 8},
+                                {40, 25},
+                                {57, 25},
+                                {74, 25},
+                                {40, 42},
+                                {57, 42},
+                                {74, 42}},
+                            sizeof(arr_rand));
+                        game = true;
+                        game_flag = false;
+                    }
+                } else if(select == 3) {
+                    game_flag = true;
                     game_state.exp += 4;
 
                     if(game_state.happiness + 5 < 30) //happiness +5
@@ -530,9 +740,9 @@ int32_t tamagochi_app(void* p) {
                 else if(select == 6) {
                     info_flag = true;
                 }
+            } else if(event.type == EventTypeTick) {
+                sec++;
             }
-        } else if(event.type == EventTypeTick) {
-            sec++;
         }
     }
 
