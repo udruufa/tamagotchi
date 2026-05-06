@@ -19,6 +19,7 @@ int select = 1;
 
 bool eat_flag;
 bool heal_flag;
+bool info_flag;
 
 int y;
 
@@ -29,6 +30,8 @@ typedef struct {
     int32_t health;
     int32_t happiness;
     int32_t hunger;
+    int32_t exp;
+    int32_t lvl;
     uint32_t last_save_time;
 } TamagochiState;
 
@@ -88,10 +91,10 @@ static void draw_callback(Canvas* canvas, void* ctx) {
 
     // if(hello_flag == false) {
     char str[16];
+    char str2[16];
+    char str3[16];
     uint32_t now = furi_hal_rtc_get_timestamp();
     seconds_passed_here = now - start;
-    snprintf(str, sizeof(str), "%ld", seconds_passed_here);
-    canvas_draw_str(canvas, 16, 20, str);
 
     if(sec % 4 == 0 || sec == 0) {
         if(dolphin == 0) {
@@ -119,8 +122,15 @@ static void draw_callback(Canvas* canvas, void* ctx) {
         }
     }
 
-    canvas_set_font(canvas, FontSecondary);
+    canvas_set_font(canvas, FontPrimary);
     canvas_draw_str(canvas, 2, 9, name);
+
+    canvas_set_font(canvas, FontSecondary);
+    game_state.lvl = floor(sqrt(game_state.exp / 10));
+    canvas_draw_str(canvas, 4, 18, "lvl");
+    snprintf(str3, sizeof(str3), "%ld", game_state.lvl);
+    canvas_draw_str(canvas, 16, 18, str3);
+
     canvas_draw_icon(canvas, 86, 2, &I_states);
 
     canvas_draw_box(canvas, 95 + (30 - game_state.health), 3, game_state.health, 4);
@@ -154,7 +164,6 @@ static void draw_callback(Canvas* canvas, void* ctx) {
         elements_multiline_text_aligned(canvas, 48, 8, AlignLeft, AlignTop, "Sardine");
         elements_multiline_text_aligned(canvas, 48, 20, AlignLeft, AlignTop, "Squid");
         elements_multiline_text_aligned(canvas, 48, 32, AlignLeft, AlignTop, "Mackerel");
-
         elements_multiline_text_aligned(canvas, 48, 48, AlignLeft, AlignTop, "Icefish");
 
         canvas_set_color(canvas, ColorBlack);
@@ -193,6 +202,44 @@ static void draw_callback(Canvas* canvas, void* ctx) {
             elements_multiline_text_aligned(canvas, 48, 40, AlignLeft, AlignTop, "Injection");
 
         elements_multiline_text_aligned(canvas, 44, y, AlignRight, AlignTop, ">");
+    }
+    if(info_flag) {
+        canvas_clear(canvas);
+
+        canvas_draw_icon(canvas, 90, 2, &I_trarops);
+
+        canvas_set_font(canvas, FontPrimary);
+        canvas_draw_str(canvas, 6, 14, name);
+        canvas_draw_str(canvas, 46, 14, "| lvl");
+        canvas_draw_str(canvas, 64, 14, str3);
+
+        canvas_set_font(canvas, FontSecondary);
+
+        canvas_draw_str(canvas, 8, 24, "exp:");
+        snprintf(str2, sizeof(str2), "%ld", game_state.exp);
+        canvas_draw_str(canvas, 28, 24, str2);
+        canvas_draw_str(canvas, 46, 24, "/");
+        snprintf(str, sizeof(str), "%d", (int)pow(game_state.lvl + 1, 2) * 10);
+        canvas_draw_str(canvas, 54, 24, str);
+
+        canvas_draw_str(canvas, 8, 40, "health:");
+        snprintf(str2, sizeof(str2), "%ld", game_state.health);
+        canvas_draw_str(canvas, 38, 40, str2);
+        canvas_draw_str(canvas, 50, 40, "/30");
+
+        canvas_draw_str(canvas, 8, 49, "happiness:");
+        snprintf(str2, sizeof(str2), "%ld", game_state.happiness);
+        canvas_draw_str(canvas, 52, 49, str2);
+        canvas_draw_str(canvas, 64, 49, "/30");
+
+        canvas_draw_str(canvas, 8, 58, "hunger:");
+        snprintf(str2, sizeof(str2), "%ld", game_state.hunger);
+        canvas_draw_str(canvas, 42, 58, str2);
+        canvas_draw_str(canvas, 50, 58, "/30");
+
+        // canvas_draw_str(canvas, 8, 32, "sec:");
+        // snprintf(str, sizeof(str), "%ld", seconds_passed_here);
+        // canvas_draw_str(canvas, 26, 32, str);
     }
 }
 // }
@@ -264,6 +311,8 @@ void init_new_game() {
     game_state.health = 30;
     game_state.happiness = 30;
     game_state.hunger = 30;
+    game_state.exp = 0;
+    game_state.lvl = 1;
     game_state.last_save_time = furi_hal_rtc_get_timestamp();
 }
 
@@ -319,6 +368,8 @@ int32_t tamagochi_app(void* p) {
                     eat_flag = false;
                 else if(heal_flag)
                     heal_flag = false;
+                else if(info_flag)
+                    info_flag = false;
                 else {
                     game_state.last_save_time = furi_hal_rtc_get_timestamp();
                     save_game();
@@ -331,8 +382,13 @@ int32_t tamagochi_app(void* p) {
                         y -= 16;
                     else if(y > 8)
                         y -= 12;
+                    else
+                        y = 48;
                 } else if(heal_flag) {
-                    if(y > 16) y -= 12;
+                    if(y > 16)
+                        y -= 12;
+                    else
+                        y = 40;
                 }
             } else if(event.input.key == InputKeyDown && event.input.type == InputTypePress) {
                 if(dolphin > 0) dolphin--;
@@ -341,8 +397,13 @@ int32_t tamagochi_app(void* p) {
                         y += 16;
                     else if(y < 48)
                         y += 12;
+                    else
+                        y = 8;
                 } else if(heal_flag) {
-                    if(y < 40) y += 12;
+                    if(y < 40)
+                        y += 12;
+                    else
+                        y = 16;
                 }
             } else if(event.input.key == InputKeyRight && event.input.type == InputTypePress) {
                 if(select == 6) select = 0;
@@ -352,6 +413,8 @@ int32_t tamagochi_app(void* p) {
                 select--;
             } else if(event.input.key == InputKeyOk && event.input.type == InputTypePress) {
                 if(eat_flag) { //EAT
+                    game_state.exp += 2;
+
                     eat_flag = false;
                     if(y == 8) { //Sardine
                         if(game_state.happiness + 1 < 30) //happiness +1
@@ -403,6 +466,8 @@ int32_t tamagochi_app(void* p) {
                 }
 
                 else if(select == 2) { //PET
+                    game_state.exp += 1;
+
                     if(game_state.happiness + 1 < 30) //happiness +1
                         game_state.happiness += 1;
                     else
@@ -410,6 +475,8 @@ int32_t tamagochi_app(void* p) {
                 }
 
                 else if(select == 3) { //PLAY
+                    game_state.exp += 4;
+
                     if(game_state.happiness + 5 < 30) //happiness +5
                         game_state.happiness += 5;
                     else
@@ -422,6 +489,8 @@ int32_t tamagochi_app(void* p) {
                 }
 
                 else if(heal_flag) { //HEAL
+                    game_state.exp += 1;
+
                     heal_flag = false;
                     if(y == 16) {
                         if(game_state.happiness - 1 > 0) //happiness -1
@@ -456,6 +525,10 @@ int32_t tamagochi_app(void* p) {
                 } else if(select == 5) {
                     heal_flag = true;
                     y = 16;
+                }
+
+                else if(select == 6) {
+                    info_flag = true;
                 }
             }
         } else if(event.type == EventTypeTick) {
