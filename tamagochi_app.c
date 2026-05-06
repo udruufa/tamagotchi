@@ -36,6 +36,7 @@ typedef struct {
     int32_t hunger;
     int32_t exp;
     int32_t lvl;
+    int32_t health_time;
     int32_t happiness_time;
     int32_t hunger_time;
     int32_t exp_time;
@@ -392,6 +393,7 @@ void init_new_game() {
     game_state.hunger = 30;
     game_state.exp = 0;
     game_state.lvl = 1;
+    game_state.health_time = 0;
     game_state.happiness_time = 60;
     game_state.hunger_time = 30;
     game_state.exp_time = 30;
@@ -401,7 +403,7 @@ void init_new_game() {
 int32_t tamagochi_app(void* p) {
     UNUSED(p);
 
-    // bool health_plus = false;
+    bool health_plus = false;
     bool happiness_plus = false;
     bool hunger_plus = false;
     bool exp_plus = false;
@@ -431,6 +433,12 @@ int32_t tamagochi_app(void* p) {
     while(1) {
         furi_check(furi_message_queue_get(event_queue, &event, FuriWaitForever) == FuriStatusOk);
 
+        if(game_state.health > 0 && seconds_passed_here % game_state.health_time == 0 &&
+           seconds_passed_here >= game_state.health_time && health_plus == false &&
+           game_state.health_time != 0) {
+            game_state.health--;
+            health_plus = true;
+        }
         if(game_state.happiness > 0 && seconds_passed_here % game_state.happiness_time == 0 &&
            seconds_passed_here >= game_state.happiness_time && happiness_plus == false) {
             game_state.happiness--;
@@ -442,6 +450,7 @@ int32_t tamagochi_app(void* p) {
             hunger_plus = true;
         }
         if(seconds_passed_here % game_state.hunger_time != 0) {
+            health_plus = false;
             happiness_plus = false;
             hunger_plus = false;
             exp_plus = false;
@@ -449,6 +458,14 @@ int32_t tamagochi_app(void* p) {
         if(seconds_passed_here % game_state.exp_time == 0 && exp_plus == false) {
             game_state.exp++;
             exp_plus = true;
+        }
+
+        if(game_state.hunger == 0) {
+            game_state.health_time = 30;
+            game_state.happiness_time = 30;
+        }
+        if(game_state.happiness == 0) {
+            game_state.health_time = 30;
         }
 
         if(event.type == EventTypeInput) {
@@ -740,9 +757,9 @@ int32_t tamagochi_app(void* p) {
                 else if(select == 6) {
                     info_flag = true;
                 }
-            } else if(event.type == EventTypeTick) {
-                sec++;
             }
+        } else if(event.type == EventTypeTick) {
+            sec++;
         }
     }
 
