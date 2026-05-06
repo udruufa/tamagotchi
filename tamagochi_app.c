@@ -168,7 +168,7 @@ static void draw_callback(Canvas* canvas, void* ctx) {
     canvas_draw_str(canvas, 2, 9, name);
 
     canvas_set_font(canvas, FontSecondary);
-    game_state.lvl = floor(sqrt(game_state.exp / 10));
+    if(game_state.exp > 10) game_state.lvl = floor(sqrt(game_state.exp / 10));
     canvas_draw_str(canvas, 4, 18, "lvl");
     snprintf(str3, sizeof(str3), "%ld", game_state.lvl);
     canvas_draw_str(canvas, 14, 18, str3);
